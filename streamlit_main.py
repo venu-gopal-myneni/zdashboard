@@ -270,7 +270,21 @@ def prep_for_revenue(df):
     df["revenue_type"] = df.apply(get_revenue_type, axis=1)
 
     return df
-def revenue_final(df_revenue,start_month,start_year,num_months):
+def calculate_percentages(data):
+    percentages = {}
+    for month, plans in data.items():
+        # Calculate total revenue for the month
+        total_revenue = sum(sum(plan.values()) for plan in plans.values())
+        # Initialize an entry for the month in the result dictionary
+        percentages[month] = {}
+        for plan, metrics in plans.items():
+            percentages[month][plan] = {}
+            for metric, value in metrics.items():
+                # Calculate the percentage relative to the monthly total revenue
+                percentages[month][plan][metric] = round((value / total_revenue) * 100,2)
+    return percentages
+
+def revenue_final_dict(df_revenue,start_month,start_year,num_months):
     out_dict = {}
     for month, year in get_next_month_year_pairs(start_month, start_year, num_months):
         key = f"{calendar.month_abbr[month]}-{str(year)[2:]}"
@@ -279,6 +293,10 @@ def revenue_final(df_revenue,start_month,start_year,num_months):
             ["revenue", "base_plan_id", "revenue_type"]]
         df_temp = df_temp.groupby(['revenue_type', 'base_plan_id'])['revenue'].sum().unstack(fill_value=0)
         out_dict[key] = df_temp.to_dict()
+    return out_dict
+
+def get_revenue_df(out_dict):
+
 
     # reformat
     # Flatten the dictionary into a list of records
@@ -296,10 +314,15 @@ def revenue_final(df_revenue,start_month,start_year,num_months):
     return df_final
 df2 = prep_df(df2)
 df2 = prep_for_revenue(df2)
-df_final = revenue_final(df2,START_MONTH,START_YEAR,NUM_MONTHS)
+out_dict = revenue_final_dict(df2,START_MONTH,START_YEAR,NUM_MONTHS)
+df_final = get_revenue_df(out_dict)
+df_final_percen = get_revenue_df(calculate_percentages(out_dict))
 
 
 # Display table using st.dataframe
 st.subheader("Revenue Breakdown")
 st.dataframe(df_final)
+
+st.subheader("Revenue Breakdown %")
+st.dataframe(df_final_percen)
 
