@@ -389,6 +389,7 @@ top_ten_countries = ["PH", "IN", "MY", "MX", "NG", "US", "KE", "ZA", "ZW", "CO"]
 start_years = [2022, 2023, 2024]
 start_months = [i for i in range(1, 13)]
 num_months = [i for i in range(1, 31)]
+st.set_page_config(layout="wide")
 
 # Header Styling
 st.title("📊 Retention & Revenue Dashboard")
@@ -411,7 +412,7 @@ with st.sidebar:
 
 
 # Retention Section
-with st.expander("📈 Retention Analysis", expanded=True):
+with st.expander(f"📈 Retention Analysis For Country: {COUNTRY}, Business Type: {BTYPE}", expanded=True):
     df = pd.read_parquet("2020-01-01_TO_2024-07-31_2.parquet")
 
     df["num_months_current_sub_to_first_sub"] = df["current_payment_date"].dt.to_period(
@@ -526,7 +527,7 @@ with st.expander("📈 Retention Analysis", expanded=True):
 # Revenue Section
 
 
-with st.expander("💰 Revenue Analysis", expanded=True):
+with st.expander(f"💰 Revenue Analysis For Country: {COUNTRY}, Business Type: {BTYPE}", expanded=True):
     df2 = pd.read_parquet("2020-01-01_TO_2024-07-31_2.parquet")
 
     if COUNTRY != "ALL":
@@ -674,25 +675,30 @@ with st.expander("💰 Revenue Analysis", expanded=True):
     df_final_percen = get_revenue_df(calculate_percentages(out_dict))
 
     st.subheader("Revenue Breakdown INR")
+    sorted_columns = sorted(df_final.columns, key=lambda x: pd.to_datetime(x, format='%b-%y'))
+    df_final = df_final[sorted_columns]
     st.dataframe(df_final.style.format("{:,.2f}").highlight_max(axis=0, color="lightblue"))
 
     # Add download button
-    csv = df_final.to_csv()
-    st.download_button(
-        label="Download Revenue Data as CSV",
-        data=csv,
-        file_name="revenue_data.csv",
-        mime="text/csv",
-    )
+    # csv = df_final.to_csv()
+    # st.download_button(
+    #     label="Download Revenue Data as CSV",
+    #     data=csv,
+    #     file_name="revenue_data.csv",
+    #     mime="text/csv",
+    # )
 
     st.subheader("Revenue Breakdown %")
+    sorted_columns = sorted(df_final_percen.columns, key=lambda x: pd.to_datetime(x, format='%b-%y'))
+    df_final_percen = df_final_percen[sorted_columns]
     st.dataframe(df_final_percen.style.format("{:,.2f}").highlight_max(axis=0, color="lightblue"))
 
+
     # Add download button
-    csv2 = df_final_percen.to_csv()
-    st.download_button(
-        label="Download Revenue Data Percentage as CSV",
-        data=csv2,
-        file_name="revenue_data_percentage.csv",
-        mime="text/csv",
-    )
+    # csv2 = df_final_percen.to_csv()
+    # st.download_button(
+    #     label="Download Revenue Data Percentage as CSV",
+    #     data=csv2,
+    #     file_name="revenue_data_percentage.csv",
+    #     mime="text/csv",
+    # )
