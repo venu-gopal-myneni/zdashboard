@@ -382,13 +382,21 @@ import calendar
 
 # Constants for dropdowns
 top_ten_types = [
-    "Retail", "Restaurant", "Wholesale", "Other", "Fast Food",
-    "Service", "Trader", "Food Stall", "Cafe", "Coffee Shop"
+    "Retail",
+    "Restaurant",
+    "Wholesale",
+    "Other",
+    "Fast Food",
+    "Service",
+    "Trader",
+    "Food Stall",
+    "Cafe",
+    "Coffee Shop",
 ]
 top_ten_countries = ["PH", "IN", "MY", "MX", "NG", "US", "KE", "ZA", "ZW", "CO"]
-start_years = [2022, 2023, 2024]
+start_years = [2024, 2023, 2023]
 start_months = [i for i in range(1, 13)]
-num_months = [i for i in range(1, 31)]
+num_months = [6] + [i for i in range(1, 31)]
 st.set_page_config(layout="wide")
 
 # Header Styling
@@ -396,23 +404,36 @@ st.title("📊 Retention & Revenue Dashboard")
 st.markdown(
     """<p style="color:#FF6347; font-size:24px; text-align:center;">
     Analyze Retention Metrics and Revenue Breakdown</p>""",
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 # Sidebar Filters
 with st.sidebar:
     st.header("Filters")
     st.subheader("Business Type and Country")
-    COUNTRY = st.selectbox("Select a Country:", ["ALL"] + top_ten_countries, help="Filter by country")
-    BTYPE = st.selectbox("Select a Business Type:", ["ALL"] + top_ten_types, help="Filter by business type")
+    COUNTRY = st.selectbox(
+        "Select a Country:", ["ALL"] + top_ten_countries, help="Filter by country"
+    )
+    BTYPE = st.selectbox(
+        "Select a Business Type:",
+        ["ALL"] + top_ten_types,
+        help="Filter by business type",
+    )
     st.subheader("Time Period")
-    START_MONTH = st.selectbox("Start Month:", start_months, help="Choose a starting month")
+    START_MONTH = st.selectbox(
+        "Start Month:", start_months, help="Choose a starting month"
+    )
     START_YEAR = st.selectbox("Start Year:", start_years, help="Choose a starting year")
-    NUM_MONTHS = st.selectbox("Number of Months:", num_months, help="Duration for analysis")
+    NUM_MONTHS = st.selectbox(
+        "Number of Months:", num_months, help="Duration for analysis"
+    )
 
 
 # Retention Section
-with st.expander(f"📈 Retention Analysis For Country: {COUNTRY}, Business Type: {BTYPE}", expanded=True):
+with st.expander(
+    f"📈 Retention Analysis For Country: {COUNTRY}, Business Type: {BTYPE}",
+    expanded=True,
+):
     df = pd.read_parquet("2020-01-01_TO_2024-07-31_2.parquet")
 
     df["num_months_current_sub_to_first_sub"] = df["current_payment_date"].dt.to_period(
@@ -439,8 +460,12 @@ with st.expander(f"📈 Retention Analysis For Country: {COUNTRY}, Business Type
     ]  # 96603
     df = df[df["num_months_current_sub_to_first_sub"] >= 0]  # 92710
     # Estimate null base_plan_id based on revenue
-    df.loc[(df["revenue"] <= 500) & (df["base_plan_id"].isnull()), "base_plan_id"] = "p1m"
-    df.loc[(df["revenue"] > 500) & (df["base_plan_id"].isnull()), "base_plan_id"] = "p1y"
+    df.loc[(df["revenue"] <= 500) & (df["base_plan_id"].isnull()), "base_plan_id"] = (
+        "p1m"
+    )
+    df.loc[(df["revenue"] > 500) & (df["base_plan_id"].isnull()), "base_plan_id"] = (
+        "p1y"
+    )
 
     df = df[df["base_plan_id"] == "p1m"]  # 83767, 65056
     if COUNTRY != "ALL":
@@ -450,7 +475,6 @@ with st.expander(f"📈 Retention Analysis For Country: {COUNTRY}, Business Type
 
     from dateutil.relativedelta import relativedelta
     from datetime import datetime
-
 
     def get_next_month_year_pairs(start_month, start_year, n):
         # Initialize the starting date
@@ -467,8 +491,9 @@ with st.expander(f"📈 Retention Analysis For Country: {COUNTRY}, Business Type
 
         return result
 
-
-    def get_p1m_counts(df, start_month: int, start_year: int, num_months: int, offset: int):
+    def get_p1m_counts(
+        df, start_month: int, start_year: int, num_months: int, offset: int
+    ):
         out_dict = {}
         df1 = df[
             (df["first_paid_td_month"] == start_month)
@@ -481,13 +506,15 @@ with st.expander(f"📈 Retention Analysis For Country: {COUNTRY}, Business Type
             out_dict[f"M{i + offset}"] = df_temp.shape[0]
         return out_dict
 
-
     import calendar
 
-
-    def get_p1m_counts_natrix(df, start_month: int, start_year: int, num_months: int = 12):
+    def get_p1m_counts_natrix(
+        df, start_month: int, start_year: int, num_months: int = 12
+    ):
         out_dict = {}
-        next_months_years = get_next_month_year_pairs(start_month, start_year, num_months)
+        next_months_years = get_next_month_year_pairs(
+            start_month, start_year, num_months
+        )
         for pos, (month, year) in enumerate(next_months_years):
             out = get_p1m_counts(df, month, year, num_months - pos, pos)
             key = f"{calendar.month_abbr[month]}-{str(year)[2:]}"
@@ -495,9 +522,7 @@ with st.expander(f"📈 Retention Analysis For Country: {COUNTRY}, Business Type
         df = pd.DataFrame.from_dict(out_dict, orient="index").fillna(0)
         return df
 
-
     final_counts = get_p1m_counts_natrix(df, START_MONTH, START_YEAR, NUM_MONTHS)
-
 
     # Function to calculate percentages
     def row_to_percentages(row):
@@ -506,38 +531,55 @@ with st.expander(f"📈 Retention Analysis For Country: {COUNTRY}, Business Type
             return row / first_non_zero * 100
         return row
 
-
     # Apply the function to each row
     final_percen = final_counts.apply(row_to_percentages, axis=1)
 
     # Format percentages for display
     final_percen = final_percen.round(2)  # Round to 2 decimal places
 
-    st.subheader("Retention Numbers")
-    st.dataframe(final_counts.style.format("{:.1f}").highlight_max(axis=0, color="lightgreen").set_properties(**{
-        "text-align": "center"}).set_table_styles([
-        {"selector": "thead", "props": [("background-color", "#f4f4f4"), ("font-weight", "bold")]}
-    ]))
+    st.subheader("Retention Numbers For P1M Plans")
+    st.dataframe(
+        final_counts.style.format("{:}")
+        .highlight_max(axis=0, color="lightgreen")
+        .set_properties(**{"text-align": "center"})
+        .set_table_styles(
+            [
+                {
+                    "selector": "thead",
+                    "props": [("background-color", "#f4f4f4"), ("font-weight", "bold")],
+                }
+            ]
+        )
+    )
 
     # Retention Percentages
-    st.subheader("Retention Percentages")
-    final_percen = final_counts.apply(lambda row: row / row.max() * 100, axis=1).round(2)
-    st.dataframe(final_percen.style.format("{:.2f}%").highlight_max(axis=0, color="lightgreen"))
+    st.subheader("Retention Percentages For P1M Plans")
+    final_percen = final_counts.apply(lambda row: row / row.max() * 100, axis=1).round(
+        2
+    )
+    st.dataframe(
+        final_percen.style.format("{:.2f}%").highlight_max(axis=0, color="lightgreen")
+    )
 
 # Revenue Section
 
 
-with st.expander(f"💰 Revenue Analysis For Country: {COUNTRY}, Business Type: {BTYPE}", expanded=True):
+with st.expander(
+    f"💰 Revenue Analysis For Country: {COUNTRY}, Business Type: {BTYPE}", expanded=True
+):
     df2 = pd.read_parquet("2020-01-01_TO_2024-07-31_2.parquet")
 
     if COUNTRY != "ALL":
         df2 = df2[df2["buyer_country"] == COUNTRY]
     if BTYPE != "ALL":
         df2 = df2[df2["type"] == BTYPE]
+
     def prep_df(df):
-        df["num_months_current_sub_to_first_sub"] = df["current_payment_date"].dt.to_period(
-            "M"
-        ).astype(int) - df["first_paid_td"].dt.to_period("M").astype(int)
+        df["num_months_current_sub_to_first_sub"] = df[
+            "current_payment_date"
+        ].dt.to_period("M").astype(int) - df["first_paid_td"].dt.to_period("M").astype(
+            int
+        )
         df["first_paid_td_year"] = df["first_paid_td"].dt.year
         df["first_paid_td_month"] = df["first_paid_td"].dt.month
         df["first_paid_td_month_abbr"] = df["first_paid_td"].dt.strftime("%b")
@@ -559,14 +601,13 @@ with st.expander(f"💰 Revenue Analysis For Country: {COUNTRY}, Business Type: 
         ]  # 96603
         df = df[df["num_months_current_sub_to_first_sub"] >= 0]  # 92710
         # Estimate null base_plan_id based on revenue
-        df.loc[(df["revenue"] <= 500) & (df["base_plan_id"].isnull()), "base_plan_id"] = (
-            "p1m"
-        )
-        df.loc[(df["revenue"] > 500) & (df["base_plan_id"].isnull()), "base_plan_id"] = (
-            "p1y"
-        )
+        df.loc[
+            (df["revenue"] <= 500) & (df["base_plan_id"].isnull()), "base_plan_id"
+        ] = "p1m"
+        df.loc[
+            (df["revenue"] > 500) & (df["base_plan_id"].isnull()), "base_plan_id"
+        ] = "p1y"
         return df
-
 
     def get_revenue_type(row):
         if row["base_plan_id"] == "p1m":
@@ -593,7 +634,6 @@ with st.expander(f"💰 Revenue Analysis For Country: {COUNTRY}, Business Type: 
         else:
             return "Unknown"
 
-
     def prep_for_revenue(df):
         df["current_payment_date_month"] = df["current_payment_date"].dt.month
         df["current_payment_date_year"] = df["current_payment_date"].dt.year
@@ -607,6 +647,19 @@ with st.expander(f"💰 Revenue Analysis For Country: {COUNTRY}, Business Type: 
 
         return df
 
+
+    def add_churn(adict):
+        total = None
+        for month, mdict in adict.items():
+            if total is None:
+                adict[month]["churn"]={"Total": None}
+                total = adict[month]["All"]["Total"]
+            else:
+                adict[month]["churn"] = {"Total": total + adict[month]["p1m"]["New"] + adict[month]["p1m"][
+                    "Resureccted"] + adict[month]["p1m"]["Unknown"] + adict[month]["p1y"]["New"] + adict[month]["p1y"][
+                                                     "Resureccted"] + adict[month]["p1y"]["Unknown"] - \
+                                                 adict[month]["All"]["Total"]}
+        return adict
 
     def calculate_percentages(data):
         percentages = {}
@@ -624,23 +677,30 @@ with st.expander(f"💰 Revenue Analysis For Country: {COUNTRY}, Business Type: 
                     )
         return percentages
 
-
-    def revenue_final_dict(df_revenue, start_month, start_year, num_months):
+    def revenue_final_dict(df_revenue, start_month, start_year, num_months, agg_type):
         out_dict = {}
-        for month, year in get_next_month_year_pairs(start_month, start_year, num_months):
+        for month, year in get_next_month_year_pairs(
+            start_month, start_year, num_months
+        ):
             key = f"{calendar.month_abbr[month]}-{str(year)[2:]}"
             df_temp = df_revenue[
                 (df_revenue["current_payment_date_month"] == month)
                 & (df_revenue["current_payment_date_year"] == year)
             ][["revenue", "base_plan_id", "revenue_type"]]
-            df_temp = (
-                df_temp.groupby(["revenue_type", "base_plan_id"])["revenue"]
-                .sum()
-                .unstack(fill_value=0)
-            )
+            if agg_type == "sum":
+                df_temp = (
+                    df_temp.groupby(["revenue_type", "base_plan_id"])["revenue"]
+                    .sum()
+                    .unstack(fill_value=0)
+                )
+            elif agg_type == "count":
+                df_temp = (
+                    df_temp.groupby(["revenue_type", "base_plan_id"])["revenue"]
+                    .count()
+                    .unstack(fill_value=0)
+                )
             out_dict[key] = df_temp.to_dict()
         return out_dict
-
 
     def get_revenue_df(out_dict):
         # reformat
@@ -657,13 +717,20 @@ with st.expander(f"💰 Revenue Analysis For Country: {COUNTRY}, Business Type: 
         df_final = pd.DataFrame(records)
 
         # Pivot the DataFrame and create a multi-level index
-        df_final = df_final.pivot(index=["plan", "metric"], columns="month", values="value")
+        df_final = df_final.pivot(
+            index=["plan", "metric"], columns="month", values="value"
+        )
         return df_final
-
 
     df2 = prep_df(df2)
     df2 = prep_for_revenue(df2)
-    out_dict = revenue_final_dict(df2, START_MONTH, START_YEAR, NUM_MONTHS)
+
+    from collections import defaultdict
+
+    AVG_REVENUE_PER_PAYING_CUSTOMER = defaultdict(list)
+
+    # Revenue SUM
+    out_dict = revenue_final_dict(df2, START_MONTH, START_YEAR, NUM_MONTHS, "sum")
     out_dict2 = deepcopy(out_dict)
     for month, plans in out_dict2.items():
         total = 0
@@ -671,34 +738,62 @@ with st.expander(f"💰 Revenue Analysis For Country: {COUNTRY}, Business Type: 
             for metric, value in metrics.items():
                 total += value
         out_dict2[month]["All"] = {"Total": total}
+        AVG_REVENUE_PER_PAYING_CUSTOMER[month].append(total)
     df_final = get_revenue_df(out_dict2)
     df_final_percen = get_revenue_df(calculate_percentages(out_dict))
 
     st.subheader("Revenue Breakdown INR")
-    sorted_columns = sorted(df_final.columns, key=lambda x: pd.to_datetime(x, format='%b-%y'))
+    sorted_columns = sorted(
+        df_final.columns, key=lambda x: pd.to_datetime(x, format="%b-%y")
+    )
     df_final = df_final[sorted_columns]
-    st.dataframe(df_final.style.format("{:,.2f}").highlight_max(axis=0, color="lightblue"))
-
-    # Add download button
-    # csv = df_final.to_csv()
-    # st.download_button(
-    #     label="Download Revenue Data as CSV",
-    #     data=csv,
-    #     file_name="revenue_data.csv",
-    #     mime="text/csv",
-    # )
+    st.dataframe(
+        df_final.style.format("{:,.2f}").highlight_max(axis=0, color="lightblue")
+    )
 
     st.subheader("Revenue Breakdown %")
-    sorted_columns = sorted(df_final_percen.columns, key=lambda x: pd.to_datetime(x, format='%b-%y'))
+    sorted_columns = sorted(
+        df_final_percen.columns, key=lambda x: pd.to_datetime(x, format="%b-%y")
+    )
     df_final_percen = df_final_percen[sorted_columns]
-    st.dataframe(df_final_percen.style.format("{:,.2f}").highlight_max(axis=0, color="lightblue"))
+    st.dataframe(
+        df_final_percen.style.format("{:,.2f}").highlight_max(axis=0, color="lightblue")
+    )
+
+    # Revenue Counts
+    out_dict3 = revenue_final_dict(df2, START_MONTH, START_YEAR, NUM_MONTHS, "count")
+    out_dict4 = deepcopy(out_dict3)
+    for month, plans in out_dict4.items():
+        total = 0
+        for plan, metrics in plans.items():
+            for metric, value in metrics.items():
+                total += value
+        out_dict4[month]["All"] = {"Total": total}
+        AVG_REVENUE_PER_PAYING_CUSTOMER[month].append(total)
+    out_dict5 = add_churn(out_dict4)
+    df_final = get_revenue_df(out_dict5)
+    df_final_percen = get_revenue_df(calculate_percentages(out_dict3))
 
 
-    # Add download button
-    # csv2 = df_final_percen.to_csv()
-    # st.download_button(
-    #     label="Download Revenue Data Percentage as CSV",
-    #     data=csv2,
-    #     file_name="revenue_data_percentage.csv",
-    #     mime="text/csv",
-    # )
+    st.subheader("Paying Customer Counts")
+    sorted_columns = sorted(
+        df_final.columns, key=lambda x: pd.to_datetime(x, format="%b-%y")
+    )
+    df_final = df_final[sorted_columns]
+    st.dataframe(df_final.style.format("{:}").highlight_max(axis=0, color="lightblue"))
+
+    st.subheader("Paying Customer Counts %")
+    sorted_columns = sorted(
+        df_final_percen.columns, key=lambda x: pd.to_datetime(x, format="%b-%y")
+    )
+    df_final_percen = df_final_percen[sorted_columns]
+    st.dataframe(
+        df_final_percen.style.format("{:,.2f}").highlight_max(axis=0, color="lightblue")
+    )
+
+    st.subheader("Average Revenue (INR) Per Paying Customer")
+    AVG_REVENUE_PER_PAYING_CUSTOMER = {
+        key: round(val[0] / val[1], 2)
+        for key, val in AVG_REVENUE_PER_PAYING_CUSTOMER.items()
+    }
+    st.json(AVG_REVENUE_PER_PAYING_CUSTOMER)
